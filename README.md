@@ -71,8 +71,7 @@ tail -f /var/log/kern.log
 2. Steps to complete assignment are described above. 
 
 3. Comment on the frequency of exits – does the number of exits increase at a stable rate? Or are there
-more exits performed during certain VM operations? 
-  Yes, number of exits increase. At boot, the exits were around 1~1.3 million. Different tasks result in increasing the total number of exits. The rate doesn't seem stable initially, but after that it depends on the task. I/O operations and similar tasks also result in increasing number of exits. 
-
-Approximately how many exits does a full VM
+more exits performed during certain VM operations? Approximately how many exits does a full VM
 boot entail?
+
+  Yes, number of exits increase. At boot, the exits were around 1~1.3 million. Different tasks result in increasing the total number of exits. The rate doesn't seem stable initially, but after that it depends on the task. I/O operations and similar tasks also result in increasing number of exits. 
