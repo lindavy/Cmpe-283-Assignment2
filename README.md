@@ -63,6 +63,7 @@ tail -f /var/log/kern.log
 
 ## Helpful Links
 [Check if Nested Virtualization is Enabled](https://ostechnix.com/how-to-enable-nested-virtualization-in-kvm-in-linux/)
+<br/>
 [Build Simple Linux Kernel Module](https://www.geeksforgeeks.org/linux-kernel-module-programming-hello-world-program/)
 
 ## Followup Questions
@@ -74,7 +75,4 @@ tail -f /var/log/kern.log
 more exits performed during certain VM operations? Approximately how many exits does a full VM
 boot entail?
 
-  Yes, number of exits increase. At boot, the exits were around 1~1.3 million. Different tasks result in increasing the total number of exits. The rate doesn't seem stable initially, but after that it depends on the task. I/O operations and similar tasks also result in increasing number of exits.
-  
-  Number of exits when running CPUID
-  ![Screen Shot 2021-04-29 at 10 42 49 PM](https://user-images.githubusercontent.com/35030604/116653571-4ffc5180-a93c-11eb-9731-8716aa2e64d2.png)
+  No, the number of exits fluctuates. Each time we execute CPUID from the nested VM, we get values ranging in 500k. Different instructions result in more or less number of exits. A full VM boot entailed about ~1M exits. 
