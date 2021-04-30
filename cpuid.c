@@ -23,17 +23,8 @@
 #include "mmu.h"
 #include "trace.h"
 #include "pmu.h"
+
 #include <asm/atomic.h>
-
-// 64-bit atomic type
-atomic64_t exit_count = ATOMIC64_INIT(0);
-atomic64_t exit_totaltime = ATOMIC64_INIT(0); 
-
-// Must explicitly export kernel symbol, so that the inserted module is correctly linked
-// EXPORT_SYMBOL_GPL will only show the symbol in GPL licensed modules
-EXPORT_SYMBOL(exit_count); 
-EXPORT_SYMBOL(exit_totaltime); 
-
 /*
  * Unlike "struct cpuinfo_x86.x86_capability", kvm_cpu_caps doesn't need to be
  * aligned to sizeof(unsigned long) because it's not accessed via bitops.
@@ -183,22 +174,16 @@ static void kvm_vcpu_after_set_cpuid(struct kvm_vcpu *vcpu)
 	kvm_update_pv_runtime(vcpu);
 
 	vcpu->arch.maxphyaddr = cpuid_query_maxphyaddr(vcpu);
-	vcpu->arch.reserved_gpa_bits = kvm_vcpu_reserved_gpa_bits_raw(vcpu);
+	kvm_mmu_reset_context(vcpu);
 
 	kvm_pmu_refresh(vcpu);
 	vcpu->arch.cr4_guest_rsvd_bits =
 	    __cr4_reserved_bits(guest_cpuid_has, vcpu);
 
-	kvm_hv_set_cpuid(vcpu);
+	vcpu->arch.cr3_lm_rsvd_bits = rsvd_bits(cpuid_maxphyaddr(vcpu), 63);
 
 	/* Invoke the vendor callback only after the above state is updated. */
-	static_call(kvm_x86_vcpu_after_set_cpuid)(vcpu);
-
-	/*
-	 * Except for the MMU, which needs to be reset after any vendor
-	 * specific adjustments to the reserved GPA bits.
-	 */
-	kvm_mmu_reset_context(vcpu);
+	kvm_x86_ops.vcpu_after_set_cpuid(vcpu);
 }
 
 static int is_efer_nx(void)
@@ -237,16 +222,6 @@ int cpuid_query_maxphyaddr(struct kvm_vcpu *vcpu)
 		return best->eax & 0xff;
 not_found:
 	return 36;
-}
-
-/*
- * This "raw" version returns the reserved GPA bits without any adjustments for
- * encryption technologies that usurp bits.  The raw mask should be used if and
- * only if hardware does _not_ strip the usurped bits, e.g. in virtual MTRRs.
- */
-u64 kvm_vcpu_reserved_gpa_bits_raw(struct kvm_vcpu *vcpu)
-{
-	return rsvd_bits(cpuid_maxphyaddr(vcpu), 63);
 }
 
 /* when an old userspace process fills a new kernel module */
@@ -418,7 +393,7 @@ void kvm_set_cpu_caps(void)
 
 	kvm_cpu_cap_mask(CPUID_7_0_EBX,
 		F(FSGSBASE) | F(BMI1) | F(HLE) | F(AVX2) | F(SMEP) |
-		F(BMI2) | F(ERMS) | F(INVPCID) | F(RTM) | 0 /*MPX*/ | F(RDSEED) |
+		F(BMI2) | F(ERMS) | 0 /*INVPCID*/ | F(RTM) | 0 /*MPX*/ | F(RDSEED) |
 		F(ADX) | F(SMAP) | F(AVX512IFMA) | F(AVX512F) | F(AVX512PF) |
 		F(AVX512ER) | F(AVX512CD) | F(CLFLUSHOPT) | F(CLWB) | F(AVX512DQ) |
 		F(SHA_NI) | F(AVX512BW) | F(AVX512VL) | 0 /*INTEL_PT*/
@@ -460,7 +435,7 @@ void kvm_set_cpu_caps(void)
 		kvm_cpu_cap_set(X86_FEATURE_SPEC_CTRL_SSBD);
 
 	kvm_cpu_cap_mask(CPUID_7_1_EAX,
-		F(AVX_VNNI) | F(AVX512_BF16)
+		F(AVX512_BF16)
 	);
 
 	kvm_cpu_cap_mask(CPUID_D_1_EAX,
@@ -1139,6 +1114,11 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
+atomic_t no_of_exits = ATOMIC_INIT(0);
+atomic64_t time_for_cycles = ATOMIC_INIT(0);
+EXPORT_SYMBOL(no_of_exits);
+EXPORT_SYMBOL(time_for_cycles);
+
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
@@ -1148,34 +1128,19 @@ int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
-
-	// Assignment 2 Changes
-	if (eax == 0x4FFFFFFF)
-	{
-		printk(KERN_INFO "Updating the eax, ebx and ecx registers!"); 
-
-		// refer to function definition above
+	if(eax == 0x4FFFFFFF){
 		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
-
-		// return the total number of exits (all types) in %eax
-		eax = atomic64_read(&exit_count); 
-		printk(KERN_INFO "Total number of exits in eax=%u", eax);	
-
-		// return the high 32 bits of the total time spent processing all exits in %ebx
-		ebx = (atomic64_read(&exit_totaltime) >> 32); 
-		printk(KERN_INFO "Total time spent for exit=%u (ebx, high bits)", ebx);
-
-		// return the low 32 bits of the total time spent processing all exits in %ecx
-		ecx = (atomic64_read(&exit_totaltime) & 0xFFFFFFFF); 
-		printk(KERN_INFO "Total time spent for exit=%u (ecx, low bits)", ecx); 
-
+		//return total number of exits
+		eax = atomic_read(&no_of_exits);
+		//Placing high 32 bits in ebx
+		ebx = (u32)(atomic64_read(&time_for_cycles) >> 32);
+		//Placing lower 32 bits in ecx
+		ecx = (u32)(atomic64_read(&time_for_cycles) & 0xFFFFFFFF);
+		printk("exit_count: %u, exit_time: %llu", atomic_read(&no_of_exits), atomic64_read(&time_for_cycles) );
 	}
-
-	else
-	{
-		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
+	else{
+		kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);	
 	}
-
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);
