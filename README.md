@@ -75,3 +75,5 @@ more exits performed during certain VM operations? Approximately how many exits 
 boot entail?
 
   Yes, number of exits increase. At boot, the exits were around 1~1.3 million. Different tasks result in increasing the total number of exits. The rate doesn't seem stable initially, but after that it depends on the task. I/O operations and similar tasks also result in increasing number of exits.
+  
+  ![Screen Shot 2021-04-29 at 10 42 49 PM](https://user-images.githubusercontent.com/35030604/116653571-4ffc5180-a93c-11eb-9731-8716aa2e64d2.png)
