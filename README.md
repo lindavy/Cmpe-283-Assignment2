@@ -61,6 +61,10 @@ You can tail the kern.log file from the host VM so that you can see the output e
 tail -f /var/log/kern.log
 ```
 
+## Helpful Links
+[Check if Nested Virtualization is Enabled](https://ostechnix.com/how-to-enable-nested-virtualization-in-kvm-in-linux/)
+[Build Simple Linux Kernel Module](https://www.geeksforgeeks.org/linux-kernel-module-programming-hello-world-program/)
+
 ## Followup Questions
 1. Linda and Dhruwaksh researched each step together, so we could both understand the process. We would also encounter similar errors, so we both research them, then communicate our findings afterwards to resolve them. For file changes, Linda editted the CPUID.C and Dhruwaksh editted the VMX.C based on the CPUID file. 
 
