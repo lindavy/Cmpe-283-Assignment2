@@ -37,21 +37,15 @@ reboot
 ```
 
 ## Edit CPUID.C and VMX.C Files
-Edit the CPUID and VMX Files with a leaf function for %eax=0x4FFFFFFF where information such as the number of exits and exit duration is returned. We printed this out to the kern.log file.
+Edit the CPUID and VMX Files with a leaf function for %eax=0x4FFFFFFF where information such as the number of exits and exit duration is returned. We printed this out to the kern.log file. After you've completed editting, rerun the make command from the previous step. If there are any syntax errors in your c files, it will be flagged when building the kernel.
 
-This is a snippet of our CPUID.C file. 
-
-
-## Rebuild Kernel
-
-## Reinsert the Kernel Modules
 
 ## Install Virt-Manager
 Next you will need to install virt-manager to install a nested VM inside your current VM. Make sure hardware virtualization is also enabled for the outer VM. 
 ```
 sudo apt-get install virt-manager 
 ```
-Follow these [instructions!](https://www.tecmint.com/create-virtual-machines-in-kvm-using-virt-manager/) to create a VM via virt-manager. You will need to download an Ubuntu ISO image (in our case we used 20.04).
+Follow these [instructions](https://www.tecmint.com/create-virtual-machines-in-kvm-using-virt-manager/) to create a VM via *virt-manager*. You will need to download an Ubuntu ISO image (in our case we used 20.04).
 
 ## Test CPUID.C & VMX.C Changes
 Use Ubuntu's CPUID package to force an exit for 0x4FFFFFFF. 
@@ -62,5 +56,16 @@ sudo apt-get install cpuid
 # run CPUID instruction
 cpuid -l 0x4FFFFFFF
 ```
+You can tail the kern.log file from the host VM so that you can see the output each time you execute CPUID. 
+```
+tail -f /var/log/kern.log
+```
 
 ## Followup Questions
+1. Linda and Dhruwaksh researched each step together, so we could both understand the process. We would also encounter similar errors, so we both research them, then communicate our findings afterwards to resolve them. For file changes, Linda editted the CPUID.C and Dhruwaksh editted the VMX.C based on the CPUID file. 
+
+2. Steps to complete assignment are described above. 
+
+4. Comment on the frequency of exits – does the number of exits increase at a stable rate? Or are there
+more exits performed during certain VM operations? Approximately how many exits does a full VM
+boot entail?
